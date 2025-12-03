@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Mario Bros - Stage 1-1</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <div class="score-panel">
+                <div class="score-item">
+                    <span class="label">MARIO</span>
+                    <span class="value" id="score">000000</span>
+                </div>
+                <div class="score-item">
+                    <span class="label">COINS</span>
+                    <span class="value" id="coins">x00</span>
+                </div>
+                <div class="score-item">
+                    <span class="label">WORLD</span>
+                    <span class="value">1-1</span>
+                </div>
+                <div class="score-item">
+                    <span class="label">TIME</span>
+                    <span class="value" id="time">400</span>
+                </div>
+                <div class="score-item">
+                    <span class="label">LIVES</span>
+                    <span class="value" id="lives">x3</span>
+                </div>
+            </div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div class="controls-info">
+            <p><strong>Controles:</strong> Flechas o WASD para mover | ESPACIO o W/↑ para saltar | R para reiniciar</p>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
