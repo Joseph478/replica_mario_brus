@@ -55,11 +55,15 @@ body {
 
 #gameCanvas {
     display: block;
-    background-color: #5c94fc;
     border: 3px solid #000;
-    image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
-    image-rendering: crisp-edges;
+    width: 1024px;
+    height: 576px;
+}
+
+#gameCanvas canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 .controls-info {

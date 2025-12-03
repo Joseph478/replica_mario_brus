@@ -1,9 +1,4 @@
-// Configuración del canvas
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-canvas.width = 1024;
-canvas.height = 576;
+import * as THREE from 'three';
 
 // Variables del juego
 let score = 0;
@@ -28,11 +23,66 @@ const keys = {
     space: false
 };
 
+// Three.js setup
+let scene, camera, renderer;
+let canvas;
+
+// Configuración de la escena 3D
+const CANVAS_WIDTH = 1024;
+const CANVAS_HEIGHT = 576;
+
+function initThree() {
+    // Crear escena
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x5c94fc);
+
+    // Crear cámara
+    camera = new THREE.PerspectiveCamera(
+        75,
+        CANVAS_WIDTH / CANVAS_HEIGHT,
+        0.1,
+        3000
+    );
+    camera.position.set(0, 200, 400);
+    camera.lookAt(0, 0, 0);
+
+    // Crear renderer
+    const container = document.getElementById('gameCanvas');
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(CANVAS_WIDTH, CANVAS_HEIGHT);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // Iluminación
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(100, 300, 200);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.camera.left = -500;
+    directionalLight.shadow.camera.right = 500;
+    directionalLight.shadow.camera.top = 500;
+    directionalLight.shadow.camera.bottom = -500;
+    directionalLight.shadow.camera.near = 0.1;
+    directionalLight.shadow.camera.far = 1000;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    scene.add(directionalLight);
+
+    // Luz de relleno
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    fillLight.position.set(-100, 100, -100);
+    scene.add(fillLight);
+}
+
 // Clase Mario
 class Mario {
     constructor(x, y) {
         this.x = x;
         this.y = y;
+        this.z = 0; // Profundidad en 3D
         this.width = 32;
         this.height = 32;
         this.velocityX = 0;
@@ -46,12 +96,95 @@ class Mario {
         this.invincibleTimer = 0;
         this.big = false;
         this.dead = false;
+
+        this.createMesh();
+    }
+
+    createMesh() {
+        this.mesh = new THREE.Group();
+
+        const height = this.big ? 48 : 32;
+        const offsetY = this.big ? -16 : 0;
+
+        // Cuerpo (rojo)
+        const bodyGeometry = new THREE.BoxGeometry(16, 8, 20);
+        const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xe60000 });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.set(0, 8 + offsetY, 0);
+        body.castShadow = true;
+        this.mesh.add(body);
+
+        const body2Geometry = new THREE.BoxGeometry(24, 8, 20);
+        const body2 = new THREE.Mesh(body2Geometry, bodyMaterial);
+        body2.position.set(0, 16 + offsetY, 0);
+        body2.castShadow = true;
+        this.mesh.add(body2);
+
+        // Overol (azul)
+        const overolGeometry = new THREE.BoxGeometry(16, 8, 20);
+        const overolMaterial = new THREE.MeshLambertMaterial({ color: 0x0000ff });
+        const overol = new THREE.Mesh(overolGeometry, overolMaterial);
+        overol.position.set(0, 24 + offsetY, 0);
+        overol.castShadow = true;
+        this.mesh.add(overol);
+
+        // Piel (beige)
+        const skinGeometry = new THREE.BoxGeometry(16, 4, 18);
+        const skinMaterial = new THREE.MeshLambertMaterial({ color: 0xffcc99 });
+        const skin = new THREE.Mesh(skinGeometry, skinMaterial);
+        skin.position.set(0, 4 + offsetY, 0);
+        skin.castShadow = true;
+        this.mesh.add(skin);
+
+        // Cabello (marrón)
+        const hairGeometry = new THREE.BoxGeometry(16, 4, 18);
+        const hairMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+        const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+        hair.position.set(0, 0 + offsetY, 0);
+        hair.castShadow = true;
+        this.mesh.add(hair);
+
+        // Ojos
+        const eyeGeometry = new THREE.BoxGeometry(3, 2, 1);
+        const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(-6, 6 + offsetY, 10);
+        this.mesh.add(leftEye);
+
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        rightEye.position.set(6, 6 + offsetY, 10);
+        this.mesh.add(rightEye);
+
+        // Gorra (roja)
+        const capGeometry = new THREE.BoxGeometry(16, 4, 18);
+        const capMaterial = new THREE.MeshLambertMaterial({ color: 0xe60000 });
+        const cap = new THREE.Mesh(capGeometry, capMaterial);
+        cap.position.set(0, 0 + offsetY, 0);
+        cap.castShadow = true;
+        this.mesh.add(cap);
+
+        // Zapatos
+        const shoeGeometry = new THREE.BoxGeometry(8, 8, 12);
+        const shoeMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+        const leftShoe = new THREE.Mesh(shoeGeometry, shoeMaterial);
+        leftShoe.position.set(-8, height - 8, 0);
+        leftShoe.castShadow = true;
+        this.mesh.add(leftShoe);
+
+        const rightShoe = new THREE.Mesh(shoeGeometry, shoeMaterial);
+        rightShoe.position.set(8, height - 8, 0);
+        rightShoe.castShadow = true;
+        this.mesh.add(rightShoe);
+
+        this.mesh.position.set(this.x, this.y + height / 2, this.z);
+        scene.add(this.mesh);
     }
 
     update() {
         if (this.dead) {
             this.velocityY += GRAVITY;
             this.y += this.velocityY;
+            this.updateMeshPosition();
             return;
         }
 
@@ -97,16 +230,19 @@ class Mario {
         }
 
         // Muerte por caída
-        if (this.y > canvas.height + 50) {
+        if (this.y > CANVAS_HEIGHT + 50) {
             this.die();
         }
 
         // Animación de caminar
         if (Math.abs(this.velocityX) > 0.5) {
             this.animation = Math.floor(this.animationSpeed / 5) % 3;
+            // Pequeña rotación al caminar
+            this.mesh.rotation.z = Math.sin(this.animationSpeed * 0.5) * 0.05;
         } else {
             this.animation = 0;
             this.animationSpeed = 0;
+            this.mesh.rotation.z = 0;
         }
 
         // Invencibilidad temporal
@@ -114,67 +250,38 @@ class Mario {
             this.invincibleTimer--;
             if (this.invincibleTimer <= 0) {
                 this.invincible = false;
+                this.mesh.traverse((child) => {
+                    if (child.material) {
+                        child.material.opacity = 1;
+                        child.material.transparent = false;
+                    }
+                });
+            } else {
+                // Parpadeo
+                const visible = Math.floor(this.invincibleTimer / 5) % 2 === 0;
+                this.mesh.traverse((child) => {
+                    if (child.material) {
+                        child.material.opacity = visible ? 0.5 : 1;
+                        child.material.transparent = true;
+                    }
+                });
             }
         }
 
         this.grounded = false;
+        this.updateMeshPosition();
     }
 
-    draw() {
-        ctx.save();
-
-        // Parpadeo cuando es invencible
-        if (this.invincible && Math.floor(this.invincibleTimer / 5) % 2 === 0) {
-            ctx.globalAlpha = 0.5;
-        }
-
-        // Dibujar Mario
-        if (this.direction === -1) {
-            ctx.translate(this.x + this.width, this.y);
-            ctx.scale(-1, 1);
-            this.drawMario(0, 0);
-        } else {
-            this.drawMario(this.x, this.y);
-        }
-
-        ctx.restore();
-    }
-
-    drawMario(x, y) {
-        const offsetY = this.big ? -16 : 0;
+    updateMeshPosition() {
         const height = this.big ? 48 : 32;
+        this.mesh.position.set(this.x, this.y + height / 2, this.z);
 
-        // Cuerpo (rojo)
-        ctx.fillStyle = '#e60000';
-        ctx.fillRect(x + 8, y + 8 + offsetY, 16, 8);
-        ctx.fillRect(x + 4, y + 16 + offsetY, 24, 8);
-
-        // Overol (azul)
-        ctx.fillStyle = '#0000ff';
-        ctx.fillRect(x + 8, y + 24 + offsetY, 16, 8);
-
-        // Piel (beige)
-        ctx.fillStyle = '#ffcc99';
-        ctx.fillRect(x + 8, y + 4 + offsetY, 16, 4);
-        ctx.fillRect(x + 12, y + 16 + offsetY, 8, 4);
-
-        // Cabello (marrón)
-        ctx.fillStyle = '#8b4513';
-        ctx.fillRect(x + 8, y + offsetY, 16, 4);
-
-        // Ojos
-        ctx.fillStyle = '#000';
-        ctx.fillRect(x + 10, y + 6 + offsetY, 3, 2);
-        ctx.fillRect(x + 18, y + 6 + offsetY, 3, 2);
-
-        // Gorra (roja)
-        ctx.fillStyle = '#e60000';
-        ctx.fillRect(x + 8, y + offsetY, 16, 4);
-
-        // Zapatos
-        ctx.fillStyle = '#8b4513';
-        ctx.fillRect(x + 4, y + height - 8, 8, 8);
-        ctx.fillRect(x + 20, y + height - 8, 8, 8);
+        // Rotar según dirección
+        if (this.direction === -1) {
+            this.mesh.rotation.y = Math.PI;
+        } else {
+            this.mesh.rotation.y = 0;
+        }
     }
 
     die() {
@@ -203,6 +310,7 @@ class Mario {
             this.height = 32;
             this.invincible = true;
             this.invincibleTimer = 120;
+            this.recreateMesh();
         } else {
             this.die();
         }
@@ -215,15 +323,26 @@ class Mario {
             this.y -= 16;
             score += 1000;
             updateHUD();
+            this.recreateMesh();
         }
+    }
+
+    recreateMesh() {
+        scene.remove(this.mesh);
+        this.createMesh();
+    }
+
+    destroy() {
+        scene.remove(this.mesh);
     }
 }
 
-// Clase Enemy (base para Goomba y Koopa)
+// Clase Enemy
 class Enemy {
     constructor(x, y, type) {
         this.x = x;
         this.y = y;
+        this.z = 0;
         this.width = 32;
         this.height = 32;
         this.velocityX = -1;
@@ -232,6 +351,110 @@ class Enemy {
         this.dead = false;
         this.stomped = false;
         this.animation = 0;
+
+        this.createMesh();
+    }
+
+    createMesh() {
+        this.mesh = new THREE.Group();
+
+        if (this.type === 'goomba') {
+            // Cuerpo marrón
+            const bodyGeometry = new THREE.BoxGeometry(24, 16, 24);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.set(0, 8, 0);
+            body.castShadow = true;
+            this.mesh.add(body);
+
+            // Ojos
+            const eyeWhiteGeometry = new THREE.BoxGeometry(6, 6, 1);
+            const eyeWhiteMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const leftEyeWhite = new THREE.Mesh(eyeWhiteGeometry, eyeWhiteMaterial);
+            leftEyeWhite.position.set(-6, 12, 13);
+            this.mesh.add(leftEyeWhite);
+
+            const rightEyeWhite = new THREE.Mesh(eyeWhiteGeometry, eyeWhiteMaterial);
+            rightEyeWhite.position.set(6, 12, 13);
+            this.mesh.add(rightEyeWhite);
+
+            const eyeBlackGeometry = new THREE.BoxGeometry(3, 3, 1);
+            const eyeBlackMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            const leftEyeBlack = new THREE.Mesh(eyeBlackGeometry, eyeBlackMaterial);
+            leftEyeBlack.position.set(-6, 12, 14);
+            this.mesh.add(leftEyeBlack);
+
+            const rightEyeBlack = new THREE.Mesh(eyeBlackGeometry, eyeBlackMaterial);
+            rightEyeBlack.position.set(6, 12, 14);
+            this.mesh.add(rightEyeBlack);
+
+            // Pies
+            const footGeometry = new THREE.BoxGeometry(10, 8, 12);
+            const footMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+            const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+            leftFoot.position.set(-7, 24, 0);
+            leftFoot.castShadow = true;
+            this.mesh.add(leftFoot);
+
+            const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+            rightFoot.position.set(7, 24, 0);
+            rightFoot.castShadow = true;
+            this.mesh.add(rightFoot);
+        } else if (this.type === 'koopa') {
+            // Caparazón verde
+            const shellGeometry = new THREE.BoxGeometry(24, 16, 24);
+            const shellMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+            const shell = new THREE.Mesh(shellGeometry, shellMaterial);
+            shell.position.set(0, 12, 0);
+            shell.castShadow = true;
+            this.mesh.add(shell);
+
+            // Detalles del caparazón
+            const detailGeometry = new THREE.BoxGeometry(16, 2, 24);
+            const detailMaterial = new THREE.MeshLambertMaterial({ color: 0x006400 });
+            const detail1 = new THREE.Mesh(detailGeometry, detailMaterial);
+            detail1.position.set(0, 14, 0);
+            this.mesh.add(detail1);
+
+            const detail2 = new THREE.Mesh(detailGeometry, detailMaterial);
+            detail2.position.set(0, 20, 0);
+            this.mesh.add(detail2);
+
+            // Cabeza
+            const headGeometry = new THREE.BoxGeometry(16, 8, 16);
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xffff99 });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.set(0, 4, 0);
+            head.castShadow = true;
+            this.mesh.add(head);
+
+            // Ojos
+            const eyeGeometry = new THREE.BoxGeometry(3, 3, 1);
+            const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-5, 4, 9);
+            this.mesh.add(leftEye);
+
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(5, 4, 9);
+            this.mesh.add(rightEye);
+
+            // Pies
+            const footGeometry = new THREE.BoxGeometry(8, 4, 8);
+            const footMaterial = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
+            const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+            leftFoot.position.set(-8, 28, 0);
+            leftFoot.castShadow = true;
+            this.mesh.add(leftFoot);
+
+            const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+            rightFoot.position.set(8, 28, 0);
+            rightFoot.castShadow = true;
+            this.mesh.add(rightFoot);
+        }
+
+        this.mesh.position.set(this.x, this.y + this.height / 2, this.z);
+        scene.add(this.mesh);
     }
 
     update() {
@@ -243,76 +466,20 @@ class Enemy {
 
         // Animación
         this.animation += 0.1;
+        if (!this.stomped) {
+            this.mesh.rotation.y += 0.02 * Math.sign(this.velocityX);
+        }
 
         // Límites
-        if (this.y > canvas.height) {
+        if (this.y > CANVAS_HEIGHT) {
             this.dead = true;
         }
+
+        this.updateMeshPosition();
     }
 
-    draw() {
-        if (this.stomped) {
-            this.drawStomped();
-        } else if (this.type === 'goomba') {
-            this.drawGoomba();
-        } else if (this.type === 'koopa') {
-            this.drawKoopa();
-        }
-    }
-
-    drawGoomba() {
-        // Cuerpo marrón
-        ctx.fillStyle = '#8b4513';
-        ctx.fillRect(this.x + 4, this.y + 8, 24, 16);
-
-        // Ojos
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(this.x + 8, this.y + 12, 6, 6);
-        ctx.fillRect(this.x + 18, this.y + 12, 6, 6);
-
-        ctx.fillStyle = '#000';
-        ctx.fillRect(this.x + 10, this.y + 14, 3, 3);
-        ctx.fillRect(this.x + 20, this.y + 14, 3, 3);
-
-        // Pies
-        ctx.fillStyle = '#654321';
-        ctx.fillRect(this.x + 4, this.y + 24, 10, 8);
-        ctx.fillRect(this.x + 18, this.y + 24, 10, 8);
-
-        // Cejas enojadas
-        ctx.fillStyle = '#000';
-        ctx.fillRect(this.x + 8, this.y + 10, 6, 2);
-        ctx.fillRect(this.x + 18, this.y + 10, 6, 2);
-    }
-
-    drawKoopa() {
-        // Caparazón verde
-        ctx.fillStyle = '#00ff00';
-        ctx.fillRect(this.x + 4, this.y + 12, 24, 16);
-
-        // Detalles del caparazón
-        ctx.fillStyle = '#darkgreen';
-        ctx.fillRect(this.x + 8, this.y + 14, 16, 2);
-        ctx.fillRect(this.x + 8, this.y + 20, 16, 2);
-
-        // Cabeza
-        ctx.fillStyle = '#ffff99';
-        ctx.fillRect(this.x + 8, this.y + 4, 16, 8);
-
-        // Ojos
-        ctx.fillStyle = '#000';
-        ctx.fillRect(this.x + 10, this.y + 6, 3, 3);
-        ctx.fillRect(this.x + 19, this.y + 6, 3, 3);
-
-        // Pies
-        ctx.fillStyle = '#ffcc00';
-        ctx.fillRect(this.x + 4, this.y + 28, 8, 4);
-        ctx.fillRect(this.x + 20, this.y + 28, 8, 4);
-    }
-
-    drawStomped() {
-        ctx.fillStyle = '#654321';
-        ctx.fillRect(this.x + 8, this.y + 24, 16, 8);
+    updateMeshPosition() {
+        this.mesh.position.set(this.x, this.y + this.height / 2, this.z);
     }
 
     stomp() {
@@ -320,6 +487,11 @@ class Enemy {
         this.velocityX = 0;
         score += 100;
         updateHUD();
+
+        // Aplastar visualmente
+        this.mesh.scale.y = 0.3;
+        this.mesh.position.y = this.y + 4;
+
         setTimeout(() => {
             this.dead = true;
         }, 500);
@@ -328,6 +500,10 @@ class Enemy {
     reverse() {
         this.velocityX *= -1;
     }
+
+    destroy() {
+        scene.remove(this.mesh);
+    }
 }
 
 // Clase Block
@@ -335,129 +511,196 @@ class Block {
     constructor(x, y, type) {
         this.x = x;
         this.y = y;
+        this.z = 0;
         this.width = TILE_SIZE;
         this.height = TILE_SIZE;
-        this.type = type; // 'brick', 'question', 'pipe', 'ground'
+        this.depth = TILE_SIZE;
+        this.type = type;
         this.hit = false;
         this.solid = true;
         this.coin = type === 'question';
+
+        this.createMesh();
     }
 
-    draw() {
+    createMesh() {
         switch(this.type) {
             case 'brick':
-                this.drawBrick();
+                this.createBrickMesh();
                 break;
             case 'question':
-                this.drawQuestion();
+                this.createQuestionMesh();
                 break;
             case 'pipe':
-                this.drawPipe();
+                this.createPipeMesh();
                 break;
             case 'ground':
-                this.drawGround();
+                this.createGroundMesh();
                 break;
             case 'cloud':
-                this.drawCloud();
+                this.createCloudMesh();
                 break;
             case 'bush':
-                this.drawBush();
+                this.createBushMesh();
                 break;
             case 'hill':
-                this.drawHill();
+                this.createHillMesh();
                 break;
+        }
+
+        if (this.mesh) {
+            this.mesh.position.set(this.x, this.y, this.z);
+            scene.add(this.mesh);
         }
     }
 
-    drawBrick() {
-        ctx.fillStyle = '#b8734e';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+    createBrickMesh() {
+        const geometry = new THREE.BoxGeometry(this.width, this.height, this.depth);
+        const material = new THREE.MeshLambertMaterial({ color: 0xb8734e });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.castShadow = true;
+        this.mesh.receiveShadow = true;
 
-        // Detalles de ladrillo
-        ctx.fillStyle = '#8b5a3c';
-        ctx.fillRect(this.x, this.y + this.height/2, this.width, 2);
-        ctx.fillRect(this.x + this.width/2, this.y, 2, this.height/2);
-        ctx.fillRect(this.x + this.width/4, this.y + this.height/2, 2, this.height/2);
-        ctx.fillRect(this.x + 3*this.width/4, this.y + this.height/2, 2, this.height/2);
+        // Agregar detalles
+        const detailGeometry = new THREE.BoxGeometry(this.width, 2, this.depth);
+        const detailMaterial = new THREE.MeshLambertMaterial({ color: 0x8b5a3c });
+        const detail = new THREE.Mesh(detailGeometry, detailMaterial);
+        detail.position.y = 0;
+        this.mesh.add(detail);
     }
 
-    drawQuestion() {
+    createQuestionMesh() {
         if (this.hit) {
-            this.drawBrick();
+            this.createBrickMesh();
             return;
         }
 
-        ctx.fillStyle = '#ffaa00';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        const geometry = new THREE.BoxGeometry(this.width, this.height, this.depth);
+        const material = new THREE.MeshLambertMaterial({ color: 0xffaa00 });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.castShadow = true;
+        this.mesh.receiveShadow = true;
 
-        // Signo de interrogación
-        ctx.fillStyle = '#000';
-        ctx.font = 'bold 24px Arial';
+        // Agregar signo de interrogación usando un plano
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 48px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('?', this.x + this.width/2, this.y + this.height/2);
+        ctx.fillText('?', 32, 32);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(20, 20, 1);
+        sprite.position.set(0, 0, this.depth / 2 + 1);
+        this.mesh.add(sprite);
+
+        // Animación de rebote
+        this.mesh.userData.bounceSpeed = 0.05;
+        this.mesh.userData.bounceAmount = 0;
     }
 
-    drawPipe() {
+    createPipeMesh() {
+        this.mesh = new THREE.Group();
+
         // Cuerpo de la tubería
-        ctx.fillStyle = '#00ff00';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        const bodyGeometry = new THREE.BoxGeometry(this.width, this.height, this.depth);
+        const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        this.mesh.add(body);
 
-        // Borde de la tubería
-        ctx.fillStyle = '#008800';
-        ctx.fillRect(this.x, this.y, 4, this.height);
-        ctx.fillRect(this.x + this.width - 4, this.y, 4, this.height);
+        // Bordes
+        const borderGeometry = new THREE.BoxGeometry(4, this.height, this.depth);
+        const borderMaterial = new THREE.MeshLambertMaterial({ color: 0x008800 });
+        const leftBorder = new THREE.Mesh(borderGeometry, borderMaterial);
+        leftBorder.position.x = -this.width / 2 + 2;
+        this.mesh.add(leftBorder);
 
-        // Parte superior de la tubería
-        if (this.y > 0) {
-            ctx.fillStyle = '#00ff00';
-            ctx.fillRect(this.x - 4, this.y - 8, this.width + 8, 8);
-            ctx.fillStyle = '#008800';
-            ctx.fillRect(this.x - 4, this.y - 8, this.width + 8, 2);
-        }
+        const rightBorder = new THREE.Mesh(borderGeometry, borderMaterial);
+        rightBorder.position.x = this.width / 2 - 2;
+        this.mesh.add(rightBorder);
+
+        // Parte superior
+        const topGeometry = new THREE.BoxGeometry(this.width + 8, 8, this.depth + 8);
+        const topMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+        const top = new THREE.Mesh(topGeometry, topMaterial);
+        top.position.y = -this.height / 2 - 4;
+        top.castShadow = true;
+        this.mesh.add(top);
     }
 
-    drawGround() {
-        ctx.fillStyle = '#da8248';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+    createGroundMesh() {
+        const geometry = new THREE.BoxGeometry(this.width, this.height, this.depth);
+        const material = new THREE.MeshLambertMaterial({ color: 0xda8248 });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.castShadow = true;
+        this.mesh.receiveShadow = true;
 
         // Detalles de tierra
-        ctx.fillStyle = '#b86930';
-        ctx.fillRect(this.x, this.y, this.width, 4);
+        const detailGeometry = new THREE.BoxGeometry(this.width, 4, this.depth);
+        const detailMaterial = new THREE.MeshLambertMaterial({ color: 0xb86930 });
+        const detail = new THREE.Mesh(detailGeometry, detailMaterial);
+        detail.position.y = -this.height / 2 + 2;
+        this.mesh.add(detail);
+    }
 
-        // Pequeños cuadrados decorativos
+    createCloudMesh() {
+        this.solid = false;
+        this.mesh = new THREE.Group();
+
+        // Crear nube con esferas
+        const sphereGeometry = new THREE.SphereGeometry(8, 8, 8);
+        const sphereMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+
+        const sphere1 = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere1.position.set(-8, 0, 0);
+        this.mesh.add(sphere1);
+
+        const sphere2 = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere2.position.set(0, 2, 0);
+        sphere2.scale.set(1.2, 1.2, 1.2);
+        this.mesh.add(sphere2);
+
+        const sphere3 = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere3.position.set(8, 0, 0);
+        this.mesh.add(sphere3);
+    }
+
+    createBushMesh() {
+        this.solid = false;
+        this.mesh = new THREE.Group();
+
+        // Crear arbusto con esferas
+        const sphereGeometry = new THREE.SphereGeometry(8, 8, 8);
+        const sphereMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+
         for (let i = 0; i < 3; i++) {
-            ctx.fillRect(this.x + i * 10, this.y + 8, 6, 6);
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.set((i - 1) * 8, 16, 0);
+            this.mesh.add(sphere);
         }
     }
 
-    drawCloud() {
+    createHillMesh() {
         this.solid = false;
-        ctx.fillStyle = '#fff';
-
-        // Nubes pixeladas
-        ctx.fillRect(this.x + 8, this.y, 16, 8);
-        ctx.fillRect(this.x + 4, this.y + 4, 24, 8);
-        ctx.fillRect(this.x, this.y + 8, 32, 8);
+        const geometry = new THREE.SphereGeometry(this.width / 2, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+        const material = new THREE.MeshLambertMaterial({ color: 0x00aa00 });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.rotation.x = Math.PI;
+        this.mesh.position.y = this.height;
     }
 
-    drawBush() {
-        this.solid = false;
-        ctx.fillStyle = '#00ff00';
-
-        // Arbusto
-        ctx.fillRect(this.x + 4, this.y + 16, 24, 16);
-        ctx.fillRect(this.x + 8, this.y + 8, 16, 8);
-    }
-
-    drawHill() {
-        this.solid = false;
-        ctx.fillStyle = '#00aa00';
-
-        // Colina simple
-        ctx.beginPath();
-        ctx.arc(this.x + this.width/2, this.y + this.height, this.width/2, 0, Math.PI, true);
-        ctx.fill();
+    update() {
+        if (this.type === 'question' && !this.hit && this.mesh.userData.bounceSpeed) {
+            this.mesh.userData.bounceAmount += this.mesh.userData.bounceSpeed;
+            this.mesh.position.y = this.y + Math.sin(this.mesh.userData.bounceAmount) * 3;
+        }
     }
 
     onHit() {
@@ -469,11 +712,19 @@ class Block {
                 updateHUD();
 
                 // Animación de moneda
-                createCoinAnimation(this.x + this.width/2, this.y);
+                createCoinAnimation(this.x, this.y);
             }
+
+            // Recrear mesh como ladrillo
+            scene.remove(this.mesh);
+            this.createMesh();
             return true;
         }
         return false;
+    }
+
+    destroy() {
+        scene.remove(this.mesh);
     }
 }
 
@@ -482,14 +733,54 @@ class PowerUp {
     constructor(x, y, type) {
         this.x = x;
         this.y = y;
+        this.z = 0;
         this.width = 32;
         this.height = 32;
-        this.type = type; // 'mushroom', 'flower'
+        this.type = type;
         this.velocityX = 2;
         this.velocityY = 0;
         this.collected = false;
         this.emerging = true;
         this.emergingY = y;
+
+        this.createMesh();
+    }
+
+    createMesh() {
+        this.mesh = new THREE.Group();
+
+        if (this.type === 'mushroom') {
+            // Sombrero rojo
+            const capGeometry = new THREE.CylinderGeometry(12, 14, 16, 16);
+            const capMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+            const cap = new THREE.Mesh(capGeometry, capMaterial);
+            cap.position.set(0, 8, 0);
+            cap.castShadow = true;
+            this.mesh.add(cap);
+
+            // Puntos blancos
+            const spotGeometry = new THREE.SphereGeometry(3, 8, 8);
+            const spotMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+
+            const spot1 = new THREE.Mesh(spotGeometry, spotMaterial);
+            spot1.position.set(-5, 10, 8);
+            this.mesh.add(spot1);
+
+            const spot2 = new THREE.Mesh(spotGeometry, spotMaterial);
+            spot2.position.set(5, 10, 8);
+            this.mesh.add(spot2);
+
+            // Tallo blanco
+            const stemGeometry = new THREE.CylinderGeometry(8, 8, 8, 16);
+            const stemMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+            stem.position.set(0, 24, 0);
+            stem.castShadow = true;
+            this.mesh.add(stem);
+        }
+
+        this.mesh.position.set(this.x, this.y + this.height / 2, this.z);
+        scene.add(this.mesh);
     }
 
     update() {
@@ -500,38 +791,34 @@ class PowerUp {
             if (this.y <= this.emergingY - 32) {
                 this.emerging = false;
             }
+            this.updateMeshPosition();
             return;
         }
 
         this.velocityY += GRAVITY;
         this.x += this.velocityX;
         this.y += this.velocityY;
+
+        // Rotación
+        this.mesh.rotation.y += 0.05;
+
+        this.updateMeshPosition();
     }
 
-    draw() {
-        if (this.collected) return;
-
-        if (this.type === 'mushroom') {
-            // Sombrero rojo con puntos blancos
-            ctx.fillStyle = '#ff0000';
-            ctx.fillRect(this.x + 4, this.y + 8, 24, 16);
-
-            // Puntos blancos
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(this.x + 8, this.y + 12, 6, 6);
-            ctx.fillRect(this.x + 18, this.y + 12, 6, 6);
-
-            // Tallo blanco
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(this.x + 8, this.y + 24, 16, 8);
-        }
+    updateMeshPosition() {
+        this.mesh.position.set(this.x, this.y + this.height / 2, this.z);
     }
 
     collect() {
         this.collected = true;
+        scene.remove(this.mesh);
         score += 1000;
         updateHUD();
         return this.type;
+    }
+
+    destroy() {
+        scene.remove(this.mesh);
     }
 }
 
@@ -540,21 +827,42 @@ class Particle {
     constructor(x, y, text) {
         this.x = x;
         this.y = y;
+        this.z = 0;
         this.text = text;
         this.life = 60;
         this.velocityY = -2;
+
+        this.createSprite();
+    }
+
+    createSprite() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 32px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.text, 64, 32);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({ map: texture });
+        this.sprite = new THREE.Sprite(material);
+        this.sprite.scale.set(60, 30, 1);
+        this.sprite.position.set(this.x, this.y, this.z);
+        scene.add(this.sprite);
     }
 
     update() {
         this.y += this.velocityY;
         this.life--;
+        this.sprite.position.set(this.x, this.y, this.z);
+        this.sprite.material.opacity = this.life / 60;
     }
 
-    draw() {
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(this.text, this.x, this.y);
+    destroy() {
+        scene.remove(this.sprite);
     }
 }
 
@@ -571,6 +879,12 @@ let cameraX = 0;
 
 // Crear el nivel 1-1
 function createLevel() {
+    // Limpiar objetos anteriores
+    blocks.forEach(block => block.destroy());
+    enemies.forEach(enemy => enemy.destroy());
+    powerUps.forEach(powerUp => powerUp.destroy());
+    particles.forEach(particle => particle.destroy());
+
     blocks = [];
     enemies = [];
     powerUps = [];
@@ -578,8 +892,8 @@ function createLevel() {
 
     // Suelo
     for (let i = 0; i < levelWidth / TILE_SIZE; i++) {
-        blocks.push(new Block(i * TILE_SIZE, canvas.height - TILE_SIZE, 'ground'));
-        blocks.push(new Block(i * TILE_SIZE, canvas.height - TILE_SIZE * 2, 'ground'));
+        blocks.push(new Block(i * TILE_SIZE, CANVAS_HEIGHT - TILE_SIZE, 'ground'));
+        blocks.push(new Block(i * TILE_SIZE, CANVAS_HEIGHT - TILE_SIZE * 2, 'ground'));
     }
 
     // Decoraciones - nubes
@@ -589,75 +903,75 @@ function createLevel() {
     blocks.push(new Block(1000, 100, 'cloud'));
 
     // Decoraciones - arbustos
-    blocks.push(new Block(300, canvas.height - TILE_SIZE * 3, 'bush'));
-    blocks.push(new Block(600, canvas.height - TILE_SIZE * 3, 'bush'));
-    blocks.push(new Block(900, canvas.height - TILE_SIZE * 3, 'bush'));
+    blocks.push(new Block(300, CANVAS_HEIGHT - TILE_SIZE * 3, 'bush'));
+    blocks.push(new Block(600, CANVAS_HEIGHT - TILE_SIZE * 3, 'bush'));
+    blocks.push(new Block(900, CANVAS_HEIGHT - TILE_SIZE * 3, 'bush'));
 
     // Bloques de pregunta y ladrillos
-    blocks.push(new Block(320, canvas.height - TILE_SIZE * 6, 'question'));
-    blocks.push(new Block(384, canvas.height - TILE_SIZE * 6, 'brick'));
-    blocks.push(new Block(416, canvas.height - TILE_SIZE * 6, 'question'));
-    blocks.push(new Block(448, canvas.height - TILE_SIZE * 6, 'brick'));
-    blocks.push(new Block(480, canvas.height - TILE_SIZE * 6, 'question'));
-    blocks.push(new Block(512, canvas.height - TILE_SIZE * 6, 'brick'));
-    blocks.push(new Block(544, canvas.height - TILE_SIZE * 6, 'question'));
+    blocks.push(new Block(320, CANVAS_HEIGHT - TILE_SIZE * 6, 'question'));
+    blocks.push(new Block(384, CANVAS_HEIGHT - TILE_SIZE * 6, 'brick'));
+    blocks.push(new Block(416, CANVAS_HEIGHT - TILE_SIZE * 6, 'question'));
+    blocks.push(new Block(448, CANVAS_HEIGHT - TILE_SIZE * 6, 'brick'));
+    blocks.push(new Block(480, CANVAS_HEIGHT - TILE_SIZE * 6, 'question'));
+    blocks.push(new Block(512, CANVAS_HEIGHT - TILE_SIZE * 6, 'brick'));
+    blocks.push(new Block(544, CANVAS_HEIGHT - TILE_SIZE * 6, 'question'));
 
     // Bloques flotantes
-    blocks.push(new Block(640, canvas.height - TILE_SIZE * 10, 'brick'));
-    blocks.push(new Block(672, canvas.height - TILE_SIZE * 10, 'brick'));
-    blocks.push(new Block(704, canvas.height - TILE_SIZE * 10, 'brick'));
-    blocks.push(new Block(736, canvas.height - TILE_SIZE * 10, 'question'));
+    blocks.push(new Block(640, CANVAS_HEIGHT - TILE_SIZE * 10, 'brick'));
+    blocks.push(new Block(672, CANVAS_HEIGHT - TILE_SIZE * 10, 'brick'));
+    blocks.push(new Block(704, CANVAS_HEIGHT - TILE_SIZE * 10, 'brick'));
+    blocks.push(new Block(736, CANVAS_HEIGHT - TILE_SIZE * 10, 'question'));
 
     // Escalera de bloques
     for (let i = 0; i < 4; i++) {
         for (let j = 0; j <= i; j++) {
-            blocks.push(new Block(900 + i * TILE_SIZE, canvas.height - TILE_SIZE * (3 + j), 'brick'));
+            blocks.push(new Block(900 + i * TILE_SIZE, CANVAS_HEIGHT - TILE_SIZE * (3 + j), 'brick'));
         }
     }
 
     // Tuberías
-    blocks.push(new Block(800, canvas.height - TILE_SIZE * 3, 'pipe'));
-    blocks.push(new Block(832, canvas.height - TILE_SIZE * 3, 'pipe'));
-    blocks.push(new Block(800, canvas.height - TILE_SIZE * 4, 'pipe'));
-    blocks.push(new Block(832, canvas.height - TILE_SIZE * 4, 'pipe'));
+    blocks.push(new Block(800, CANVAS_HEIGHT - TILE_SIZE * 3, 'pipe'));
+    blocks.push(new Block(832, CANVAS_HEIGHT - TILE_SIZE * 3, 'pipe'));
+    blocks.push(new Block(800, CANVAS_HEIGHT - TILE_SIZE * 4, 'pipe'));
+    blocks.push(new Block(832, CANVAS_HEIGHT - TILE_SIZE * 4, 'pipe'));
 
-    blocks.push(new Block(1200, canvas.height - TILE_SIZE * 4, 'pipe'));
-    blocks.push(new Block(1232, canvas.height - TILE_SIZE * 4, 'pipe'));
-    blocks.push(new Block(1200, canvas.height - TILE_SIZE * 5, 'pipe'));
-    blocks.push(new Block(1232, canvas.height - TILE_SIZE * 5, 'pipe'));
-    blocks.push(new Block(1200, canvas.height - TILE_SIZE * 6, 'pipe'));
-    blocks.push(new Block(1232, canvas.height - TILE_SIZE * 6, 'pipe'));
+    blocks.push(new Block(1200, CANVAS_HEIGHT - TILE_SIZE * 4, 'pipe'));
+    blocks.push(new Block(1232, CANVAS_HEIGHT - TILE_SIZE * 4, 'pipe'));
+    blocks.push(new Block(1200, CANVAS_HEIGHT - TILE_SIZE * 5, 'pipe'));
+    blocks.push(new Block(1232, CANVAS_HEIGHT - TILE_SIZE * 5, 'pipe'));
+    blocks.push(new Block(1200, CANVAS_HEIGHT - TILE_SIZE * 6, 'pipe'));
+    blocks.push(new Block(1232, CANVAS_HEIGHT - TILE_SIZE * 6, 'pipe'));
 
     // Más bloques de pregunta
     for (let i = 0; i < 3; i++) {
-        blocks.push(new Block(1400 + i * 64, canvas.height - TILE_SIZE * 6, 'question'));
+        blocks.push(new Block(1400 + i * 64, CANVAS_HEIGHT - TILE_SIZE * 6, 'question'));
     }
 
     // Plataformas flotantes
     for (let i = 0; i < 5; i++) {
-        blocks.push(new Block(1700 + i * TILE_SIZE, canvas.height - TILE_SIZE * 8, 'brick'));
+        blocks.push(new Block(1700 + i * TILE_SIZE, CANVAS_HEIGHT - TILE_SIZE * 8, 'brick'));
     }
 
     // Enemigos - Goombas
-    enemies.push(new Enemy(400, canvas.height - TILE_SIZE * 3, 'goomba'));
-    enemies.push(new Enemy(500, canvas.height - TILE_SIZE * 3, 'goomba'));
-    enemies.push(new Enemy(700, canvas.height - TILE_SIZE * 3, 'goomba'));
-    enemies.push(new Enemy(1000, canvas.height - TILE_SIZE * 3, 'goomba'));
-    enemies.push(new Enemy(1100, canvas.height - TILE_SIZE * 3, 'goomba'));
-    enemies.push(new Enemy(1500, canvas.height - TILE_SIZE * 3, 'goomba'));
+    enemies.push(new Enemy(400, CANVAS_HEIGHT - TILE_SIZE * 3, 'goomba'));
+    enemies.push(new Enemy(500, CANVAS_HEIGHT - TILE_SIZE * 3, 'goomba'));
+    enemies.push(new Enemy(700, CANVAS_HEIGHT - TILE_SIZE * 3, 'goomba'));
+    enemies.push(new Enemy(1000, CANVAS_HEIGHT - TILE_SIZE * 3, 'goomba'));
+    enemies.push(new Enemy(1100, CANVAS_HEIGHT - TILE_SIZE * 3, 'goomba'));
+    enemies.push(new Enemy(1500, CANVAS_HEIGHT - TILE_SIZE * 3, 'goomba'));
 
     // Enemigos - Koopas
-    enemies.push(new Enemy(600, canvas.height - TILE_SIZE * 3, 'koopa'));
-    enemies.push(new Enemy(950, canvas.height - TILE_SIZE * 3, 'koopa'));
-    enemies.push(new Enemy(1300, canvas.height - TILE_SIZE * 3, 'koopa'));
-    enemies.push(new Enemy(1800, canvas.height - TILE_SIZE * 3, 'koopa'));
+    enemies.push(new Enemy(600, CANVAS_HEIGHT - TILE_SIZE * 3, 'koopa'));
+    enemies.push(new Enemy(950, CANVAS_HEIGHT - TILE_SIZE * 3, 'koopa'));
+    enemies.push(new Enemy(1300, CANVAS_HEIGHT - TILE_SIZE * 3, 'koopa'));
+    enemies.push(new Enemy(1800, CANVAS_HEIGHT - TILE_SIZE * 3, 'koopa'));
 
     // Más enemigos a lo largo del nivel
     for (let i = 2000; i < levelWidth - 500; i += 300) {
         if (Math.random() > 0.5) {
-            enemies.push(new Enemy(i, canvas.height - TILE_SIZE * 3, 'goomba'));
+            enemies.push(new Enemy(i, CANVAS_HEIGHT - TILE_SIZE * 3, 'goomba'));
         } else {
-            enemies.push(new Enemy(i, canvas.height - TILE_SIZE * 3, 'koopa'));
+            enemies.push(new Enemy(i, CANVAS_HEIGHT - TILE_SIZE * 3, 'koopa'));
         }
     }
 }
@@ -795,17 +1109,20 @@ function handlePowerUpCollisions() {
 
 // Cámara
 function updateCamera() {
-    cameraX = mario.x - canvas.width / 3;
+    const targetX = mario.x - CANVAS_WIDTH / 3;
+    cameraX = Math.max(0, Math.min(targetX, levelWidth - CANVAS_WIDTH));
 
-    if (cameraX < 0) cameraX = 0;
-    if (cameraX > levelWidth - canvas.width) {
-        cameraX = levelWidth - canvas.width;
-    }
+    // Actualizar posición de la cámara en 3D
+    camera.position.x = cameraX + CANVAS_WIDTH / 2;
+    camera.position.y = 200;
+    camera.position.z = 400;
+    camera.lookAt(cameraX + CANVAS_WIDTH / 2, 100, 0);
 }
 
 // Temporizador
 let timerInterval;
 function startTimer() {
+    if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
         if (gameRunning && !mario.dead) {
             time--;
@@ -820,7 +1137,11 @@ function startTimer() {
 
 // Reset del nivel
 function resetLevel() {
+    if (mario) mario.destroy();
     mario = new Mario(100, 100);
+    enemies.forEach(enemy => enemy.destroy());
+    powerUps.forEach(powerUp => powerUp.destroy());
+    particles.forEach(particle => particle.destroy());
     enemies = [];
     powerUps = [];
     particles = [];
@@ -831,27 +1152,81 @@ function resetLevel() {
     updateHUD();
 }
 
+// Overlay para Game Over y Victoria
+let overlayDiv;
+function createOverlay() {
+    if (!overlayDiv) {
+        overlayDiv = document.createElement('div');
+        overlayDiv.style.position = 'absolute';
+        overlayDiv.style.top = '0';
+        overlayDiv.style.left = '0';
+        overlayDiv.style.width = '1024px';
+        overlayDiv.style.height = '576px';
+        overlayDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        overlayDiv.style.display = 'none';
+        overlayDiv.style.justifyContent = 'center';
+        overlayDiv.style.alignItems = 'center';
+        overlayDiv.style.flexDirection = 'column';
+        overlayDiv.style.color = 'white';
+        overlayDiv.style.fontFamily = '"Press Start 2P", monospace';
+        overlayDiv.style.zIndex = '1000';
+        overlayDiv.style.pointerEvents = 'none';
+        document.querySelector('.game-container').appendChild(overlayDiv);
+    }
+    return overlayDiv;
+}
+
+function showOverlay(title, subtitle) {
+    const overlay = createOverlay();
+    overlay.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 20px;">${title}</div>
+        <div style="font-size: 24px;">${subtitle}</div>
+    `;
+    overlay.style.display = 'flex';
+}
+
+function hideOverlay() {
+    if (overlayDiv) {
+        overlayDiv.style.display = 'none';
+    }
+}
+
 // Game Loop
 function gameLoop() {
-    // Limpiar canvas
-    ctx.fillStyle = '#5c94fc';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.save();
-    ctx.translate(-cameraX, 0);
-
     // Actualizar
     if (gameRunning) {
         mario.update();
 
-        enemies = enemies.filter(enemy => !enemy.dead);
+        enemies = enemies.filter(enemy => {
+            if (enemy.dead) {
+                enemy.destroy();
+                return false;
+            }
+            return true;
+        });
         enemies.forEach(enemy => enemy.update());
 
-        powerUps = powerUps.filter(powerUp => !powerUp.collected || powerUp.emerging);
+        powerUps = powerUps.filter(powerUp => {
+            if (powerUp.collected && !powerUp.emerging) {
+                return false;
+            }
+            return true;
+        });
         powerUps.forEach(powerUp => powerUp.update());
 
-        particles = particles.filter(particle => particle.life > 0);
+        particles = particles.filter(particle => {
+            if (particle.life <= 0) {
+                particle.destroy();
+                return false;
+            }
+            return true;
+        });
         particles.forEach(particle => particle.update());
+
+        // Actualizar bloques (para animación)
+        blocks.forEach(block => {
+            if (block.update) block.update();
+        });
 
         handleBlockCollisions();
         handleEnemyCollisions();
@@ -860,42 +1235,19 @@ function gameLoop() {
         updateCamera();
     }
 
-    // Dibujar
-    blocks.forEach(block => block.draw());
-    enemies.forEach(enemy => enemy.draw());
-    powerUps.forEach(powerUp => powerUp.draw());
-    mario.draw();
-    particles.forEach(particle => particle.draw());
-
-    ctx.restore();
-
     // Game Over
     if (gameOver) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 48px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
-        ctx.font = 'bold 24px Arial';
-        ctx.fillText('Presiona R para reiniciar', canvas.width / 2, canvas.height / 2 + 50);
+        showOverlay('GAME OVER', 'Presiona R para reiniciar');
     }
 
     // Victoria
     if (mario.x > levelWidth - 200 && !mario.dead) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 48px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('¡VICTORIA!', canvas.width / 2, canvas.height / 2);
-        ctx.font = 'bold 24px Arial';
-        ctx.fillText('Stage 1-1 Completado', canvas.width / 2, canvas.height / 2 + 50);
+        showOverlay('¡VICTORIA!', 'Stage 1-1 Completado');
         gameRunning = false;
     }
 
+    // Renderizar
+    renderer.render(scene, camera);
     requestAnimationFrame(gameLoop);
 }
 
@@ -913,6 +1265,7 @@ document.addEventListener('keydown', (e) => {
         score = 0;
         coins = 0;
         gameOver = false;
+        hideOverlay();
         resetLevel();
     }
 });
@@ -925,6 +1278,7 @@ document.addEventListener('keyup', (e) => {
 });
 
 // Inicializar juego
+initThree();
 mario = new Mario(100, 100);
 createLevel();
 startTimer();
