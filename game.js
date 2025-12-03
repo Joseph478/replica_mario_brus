@@ -31,6 +31,13 @@ let canvas;
 const CANVAS_WIDTH = 1024;
 const CANVAS_HEIGHT = 576;
 
+// Función para convertir coordenadas Y de Canvas 2D a Three.js
+// En Canvas 2D: Y=0 arriba, Y=576 abajo
+// En Three.js: Y=0 centro, Y+ arriba, Y- abajo
+function toThreeY(canvasY) {
+    return CANVAS_HEIGHT - canvasY;
+}
+
 function initThree() {
     // Crear escena
     scene = new THREE.Scene();
@@ -43,8 +50,10 @@ function initThree() {
         0.1,
         3000
     );
-    camera.position.set(0, 200, 400);
-    camera.lookAt(0, 0, 0);
+    // Posicionar cámara para vista isométrica
+    const centerY = toThreeY(CANVAS_HEIGHT / 2);
+    camera.position.set(CANVAS_WIDTH / 2, centerY + 200, 400);
+    camera.lookAt(CANVAS_WIDTH / 2, centerY, 0);
 
     // Crear renderer
     const container = document.getElementById('gameCanvas');
@@ -59,14 +68,15 @@ function initThree() {
     scene.add(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(100, 300, 200);
+    const centerY = toThreeY(CANVAS_HEIGHT / 2);
+    directionalLight.position.set(100, centerY + 300, 200);
     directionalLight.castShadow = true;
     directionalLight.shadow.camera.left = -500;
     directionalLight.shadow.camera.right = 500;
     directionalLight.shadow.camera.top = 500;
     directionalLight.shadow.camera.bottom = -500;
     directionalLight.shadow.camera.near = 0.1;
-    directionalLight.shadow.camera.far = 1000;
+    directionalLight.shadow.camera.far = 1500;
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
     scene.add(directionalLight);
@@ -176,7 +186,9 @@ class Mario {
         rightShoe.castShadow = true;
         this.mesh.add(rightShoe);
 
-        this.mesh.position.set(this.x, this.y + height / 2, this.z);
+        // Convertir coordenadas Y de Canvas 2D a Three.js
+        const threeY = toThreeY(this.y + height / 2);
+        this.mesh.position.set(this.x, threeY, this.z);
         scene.add(this.mesh);
     }
 
@@ -274,7 +286,9 @@ class Mario {
 
     updateMeshPosition() {
         const height = this.big ? 48 : 32;
-        this.mesh.position.set(this.x, this.y + height / 2, this.z);
+        // Convertir coordenadas Y de Canvas 2D a Three.js
+        const threeY = toThreeY(this.y + height / 2);
+        this.mesh.position.set(this.x, threeY, this.z);
 
         // Rotar según dirección
         if (this.direction === -1) {
@@ -453,7 +467,9 @@ class Enemy {
             this.mesh.add(rightFoot);
         }
 
-        this.mesh.position.set(this.x, this.y + this.height / 2, this.z);
+        // Convertir coordenadas Y de Canvas 2D a Three.js
+        const threeY = toThreeY(this.y + this.height / 2);
+        this.mesh.position.set(this.x, threeY, this.z);
         scene.add(this.mesh);
     }
 
@@ -479,7 +495,9 @@ class Enemy {
     }
 
     updateMeshPosition() {
-        this.mesh.position.set(this.x, this.y + this.height / 2, this.z);
+        // Convertir coordenadas Y de Canvas 2D a Three.js
+        const threeY = toThreeY(this.y + this.height / 2);
+        this.mesh.position.set(this.x, threeY, this.z);
     }
 
     stomp() {
@@ -490,7 +508,9 @@ class Enemy {
 
         // Aplastar visualmente
         this.mesh.scale.y = 0.3;
-        this.mesh.position.y = this.y + 4;
+        // Convertir coordenadas Y de Canvas 2D a Three.js
+        const threeY = toThreeY(this.y + 4);
+        this.mesh.position.y = threeY;
 
         setTimeout(() => {
             this.dead = true;
@@ -549,7 +569,9 @@ class Block {
         }
 
         if (this.mesh) {
-            this.mesh.position.set(this.x, this.y, this.z);
+            // Convertir coordenadas Y de Canvas 2D a Three.js
+            const threeY = toThreeY(this.y);
+            this.mesh.position.set(this.x, threeY, this.z);
             scene.add(this.mesh);
         }
     }
@@ -699,7 +721,10 @@ class Block {
     update() {
         if (this.type === 'question' && !this.hit && this.mesh.userData.bounceSpeed) {
             this.mesh.userData.bounceAmount += this.mesh.userData.bounceSpeed;
-            this.mesh.position.y = this.y + Math.sin(this.mesh.userData.bounceAmount) * 3;
+            // Convertir coordenadas Y de Canvas 2D a Three.js
+            const bounce = Math.sin(this.mesh.userData.bounceAmount) * 3;
+            const threeY = toThreeY(this.y - bounce);
+            this.mesh.position.y = threeY;
         }
     }
 
@@ -779,7 +804,9 @@ class PowerUp {
             this.mesh.add(stem);
         }
 
-        this.mesh.position.set(this.x, this.y + this.height / 2, this.z);
+        // Convertir coordenadas Y de Canvas 2D a Three.js
+        const threeY = toThreeY(this.y + this.height / 2);
+        this.mesh.position.set(this.x, threeY, this.z);
         scene.add(this.mesh);
     }
 
@@ -806,7 +833,9 @@ class PowerUp {
     }
 
     updateMeshPosition() {
-        this.mesh.position.set(this.x, this.y + this.height / 2, this.z);
+        // Convertir coordenadas Y de Canvas 2D a Three.js
+        const threeY = toThreeY(this.y + this.height / 2);
+        this.mesh.position.set(this.x, threeY, this.z);
     }
 
     collect() {
@@ -850,14 +879,18 @@ class Particle {
         const material = new THREE.SpriteMaterial({ map: texture });
         this.sprite = new THREE.Sprite(material);
         this.sprite.scale.set(60, 30, 1);
-        this.sprite.position.set(this.x, this.y, this.z);
+        // Convertir coordenadas Y de Canvas 2D a Three.js
+        const threeY = toThreeY(this.y);
+        this.sprite.position.set(this.x, threeY, this.z);
         scene.add(this.sprite);
     }
 
     update() {
         this.y += this.velocityY;
         this.life--;
-        this.sprite.position.set(this.x, this.y, this.z);
+        // Convertir coordenadas Y de Canvas 2D a Three.js
+        const threeY = toThreeY(this.y);
+        this.sprite.position.set(this.x, threeY, this.z);
         this.sprite.material.opacity = this.life / 60;
     }
 
@@ -1113,10 +1146,12 @@ function updateCamera() {
     cameraX = Math.max(0, Math.min(targetX, levelWidth - CANVAS_WIDTH));
 
     // Actualizar posición de la cámara en 3D
+    // La cámara mira hacia el centro del mundo en coordenadas Three.js
+    const centerY = toThreeY(CANVAS_HEIGHT / 2);
     camera.position.x = cameraX + CANVAS_WIDTH / 2;
-    camera.position.y = 200;
+    camera.position.y = centerY + 200;
     camera.position.z = 400;
-    camera.lookAt(cameraX + CANVAS_WIDTH / 2, 100, 0);
+    camera.lookAt(cameraX + CANVAS_WIDTH / 2, centerY, 0);
 }
 
 // Temporizador
