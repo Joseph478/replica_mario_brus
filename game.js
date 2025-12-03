@@ -68,7 +68,6 @@ function initThree() {
     scene.add(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    const centerY = toThreeY(CANVAS_HEIGHT / 2);
     directionalLight.position.set(100, centerY + 300, 200);
     directionalLight.castShadow = true;
     directionalLight.shadow.camera.left = -500;
